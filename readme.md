@@ -10,6 +10,9 @@ use ttl module to connect your ubtech servo, only connect 1 servo at the time.
 
 you can change servo ID, and test if it works or not.
 
+![636333009_10162828994076395_4064788741446823381_n](https://github.com/user-attachments/assets/47017e3e-4a94-47cb-8e35-e71a1262fcd2)
+
+
 ubtech servo port from left to right is gnd-vcc-data
 
 you need to use 2s battery to power up the servo, wire what i did.
@@ -20,4 +23,4 @@ vcc, servo+battery
 
 data, servo+tx pin from module, rx(orange) is unnecessary
 
-servo test, all code checked and it works for all ubtech servo, enjoy.
+https://www.youtube.com/watch?v=i3N7W7t5f8s
