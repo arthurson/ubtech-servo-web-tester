@@ -1,3 +1,6 @@
+![Screenshot_20260310_165830](https://github.com/user-attachments/assets/96259782-8bdd-4e99-8455-15d8ed7f4675)
+
+
 original source code for arduino coming from this page
 
 https://gitee.com/coding_everything/xaobao_cheap_bus_servo_hack_record/tree/master
@@ -15,7 +18,7 @@ you can change servo ID, and test if it works or not.
 
 ubtech servo port from left to right is gnd-vcc-data
 
-you need to use 2s battery to power up the servo, wire what i did.
+you need to use 2s battery to power up the servo, wire like what i did.
 
 gnd, servo+battery+gnd pin from module
 
