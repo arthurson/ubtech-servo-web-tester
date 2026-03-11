@@ -1,7 +1,7 @@
 ![Screenshot_20260310_165830](https://github.com/user-attachments/assets/96259782-8bdd-4e99-8455-15d8ed7f4675)
 
 
-original source code for arduino coming from this page
+servo source code for arduino coming from this page
 
 https://gitee.com/coding_everything/xaobao_cheap_bus_servo_hack_record/tree/master
 
