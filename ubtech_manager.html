@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UBTech Bus Servo Web Manager</title>
+<style>
+  :root{
+    --bg:#0f1216; --panel:#171b21; --panel2:#1e242c; --line:#2a313b;
+    --text:#e7ecf2; --sub:#8b96a5; --accent:#ff8a3d; --accent2:#28c76f;
+    --warn:#ffb020; --danger:#ff4d5e; --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;}
+  header{display:flex;align-items:center;gap:12px;padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;flex-wrap:wrap;}
+  header h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.3px;}
+  header h1 span{color:var(--sub);font-weight:400;}
+  .pill{padding:4px 10px;border-radius:999px;font-size:12px;font-weight:600;}
+  .pill.off{background:#3a2323;color:var(--danger);}
+  .pill.on{background:#173425;color:var(--accent2);}
+  .spacer{flex:1;}
+  button{cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:7px 14px;border-radius:8px;font-size:13px;transition:.15s;}
+  button:hover{border-color:var(--accent);}
+  button:disabled{opacity:.35;cursor:not-allowed;}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#1a0e05;font-weight:600;}
+  button.primary:hover{filter:brightness(1.08);}
+  button.danger{border-color:var(--danger);color:var(--danger);}
+  button.danger:hover{background:#3a2323;}
+  select,input[type=number],input[type=text]{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:7px 10px;border-radius:8px;font-size:13px;}
+  select:focus,input:focus{outline:none;border-color:var(--accent);}
+  main{display:grid;grid-template-columns:280px 1fr 340px;gap:14px;padding:14px;max-width:1600px;margin:0 auto;align-items:start;}
+  @media (max-width:1100px){ main{grid-template-columns:1fr;} }
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:14px;}
+  .card h2{font-size:13px;text-transform:uppercase;letter-spacing:.6px;color:var(--sub);margin:0 0 12px;font-weight:700;}
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .row label{width:118px;flex-shrink:0;color:var(--sub);font-size:12.5px;}
+  .row input,.row select{flex:1;min-width:70px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .slider-wrap{display:flex;align-items:center;gap:12px;}
+  input[type=range]{flex:1;accent-color:var(--accent);}
+  .posval{width:64px;text-align:center;font-family:var(--mono);font-size:15px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:4px;}
+  .readout{font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);}
+  .readout small{font-size:11px;color:var(--sub);font-weight:400;display:block;}
+  .kv{display:grid;grid-template-columns:1fr auto;gap:4px 10px;font-family:var(--mono);font-size:12.5px;}
+  .kv div.k{color:var(--sub);}
+  #log{background:#0a0d11;border:1px solid var(--line);border-radius:8px;padding:8px 10px;height:220px;overflow-y:auto;font-family:var(--mono);font-size:11.5px;line-height:1.6;color:#8fd0ff;}
+  #log .tx{color:#ffcf6e;}
+  #log .rx{color:#7bffb0;}
+  #log .err{color:var(--danger);}
+  #log .info{color:var(--sub);}
+  .servo-list{max-height:340px;overflow-y:auto;}
+  .servo-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border-radius:8px;margin-bottom:6px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;}
+  .servo-item:hover{border-color:var(--accent);}
+  .servo-item.active{border-color:var(--accent);background:#2a1c11;}
+  .servo-item .id{font-family:var(--mono);font-weight:700;color:var(--accent);}
+  .badge{font-size:10px;padding:2px 6px;border-radius:4px;background:var(--panel);color:var(--sub);}
+  .hint{color:var(--sub);font-size:11.5px;margin-top:4px;}
+  .section-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;}
+  code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-family:var(--mono);}
+  .warnbox{background:#2b220f;border:1px solid #5a4620;color:var(--warn);padding:8px 10px;border-radius:8px;font-size:12px;margin-bottom:12px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:10px 18px;border-radius:8px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.4);opacity:0;pointer-events:none;transition:.25s;z-index:100;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px);}
+  .toast.err{border-color:var(--danger);color:var(--danger);}
+  footer{text-align:center;color:var(--sub);font-size:11px;padding:20px;}
+  a{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>UBTech Bus Servo <span>Web Manager</span></h1>
+  <span id="connPill" class="pill off">未連接</span>
+  <div class="spacer"></div>
+  <span style="color:var(--sub);font-size:12px;">Baud: 115200, 8N1 (fixed)</span>
+  <button id="btnConnect" class="primary">連接 USB-TTL Adapter</button>
+  <button id="btnDisconnect" class="danger" disabled>切斷</button>
+</header>
+
+<main>
+  <!-- LEFT -->
+  <div>
+    <div class="card">
+      <h2>Servo 掃描 / 清單</h2>
+      <div class="hint">用「讀取固件版本號」逐個 ID ping（1–240），有回應即代表在線。</div>
+      <div class="row"><label>掃描範圍</label>
+        <input type="number" id="scanMin" value="1" min="1" max="240" style="width:56px;">
+        <span style="color:var(--sub);">–</span>
+        <input type="number" id="scanMax" value="16" min="1" max="240" style="width:56px;">
+      </div>
+      <div class="section-actions">
+        <button id="btnScan">掃描</button>
+      </div>
+      <div id="servoList" class="servo-list" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+      <h2>目標 Servo</h2>
+      <div class="row"><label>ID (0–240)</label><input type="number" id="targetId" min="0" max="240" value="1"></div>
+      <div class="hint">ID=0 為廣播位址，對所有 servo 均有效（僅部分指令支援，例如 Move / 強制中止）。修改 ID 時請勿用廣播。</div>
+      <div class="section-actions">
+        <button id="btnGetVersion" class="primary">讀取固件版本 / Ping</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>通訊記錄</h2>
+      <div id="log"></div>
+      <div class="section-actions">
+        <button id="btnClearLog">清空記錄</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDDLE -->
+  <div>
+    <div class="card">
+      <h2>角度控制 (0x01 設置角度)</h2>
+      <div class="slider-wrap">
+        <span style="color:var(--sub);font-size:11px;">0°</span>
+        <input type="range" id="posSlider" min="0" max="240" value="120" step="1">
+        <span style="color:var(--sub);font-size:11px;">240°</span>
+        <input type="text" id="posValue" class="posval" value="120">
+      </div>
+      <div class="row"><label>運動時間 (0–255)</label>
+        <input type="range" id="timeSlider" min="0" max="255" value="50" step="1" style="flex:1;">
+        <input type="text" id="timeValue" class="posval" value="50">
+      </div>
+      <div class="hint">運動時間單位 20ms（0 = 全速轉動）。目標角度最大有效值 240°，單位 1 度。</div>
+      <div class="row"><label>鎖定時間 (0–3270)</label>
+        <input type="number" id="lockTime" min="0" max="3270" value="0" style="flex:1;">
+      </div>
+      <div class="hint">鎖定時間單位 20ms：從舵機開始轉動起計時，未結束前舵機不再響應新的角度指令；到位後如外力導致偏移會強制修正。0 = 不啟用鎖定。</div>
+      <div class="section-actions">
+        <button id="btnCenter">回中心 (120°)</button>
+        <button id="btnSendMove" class="primary">送出角度指令</button>
+        <button id="btnAbort" class="danger">強制中止並失電</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>即時監控</h2>
+      <div class="grid2">
+        <div>
+          <div class="readout" id="liveTarget">--<small>目標角度回讀</small></div>
+        </div>
+        <div>
+          <div class="readout" id="liveActual">--<small>實際角度</small></div>
+        </div>
+      </div>
+      <div class="section-actions">
+        <button id="btnGetPos">讀取角度 (0x02)</button>
+        <button id="btnLiveToggle">開始輪詢監控</button>
+      </div>
+      <div class="hint">讀取角度後 servo 會失電（僅靠齒輪阻尼維持位置），除非隨即再送出角度指令重新鎖定。</div>
+    </div>
+
+    <div class="card">
+      <h2>角度偏移量校正 (0xD2 / 0xD4)</h2>
+      <div class="row"><label>偏移量 (度)</label><input type="number" id="p_offsetDeg" min="-30" max="30" step="0.1" value="0"></div>
+      <div class="hint" style="margin:-4px 0 8px 126px;">範圍 -30° 至 +30°（內部單位 1/3 度，即 -90～90），面向舵盤正值順時針。重新上電後會被清零。</div>
+      <div class="section-actions">
+        <button id="btnGetOffset">讀取偏移量</button>
+        <button id="btnSetOffset" class="primary">寫入偏移量</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>修改舵機 ID (0xCD)</h2>
+      <div class="warnbox">⚠️ ID 修改立即生效。除非總線上只有單一 servo，否則請勿使用廣播 ID=0 執行此操作。</div>
+      <div class="row"><label>新 ID (1–240)</label><input type="number" id="p_newid" min="1" max="240" value="1"></div>
+      <div class="section-actions">
+        <button id="btnWriteId" class="danger">寫入新 ID</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div>
+    <div class="card">
+      <h2>連接資訊</h2>
+      <div class="kv" id="connInfo">
+        <div class="k">狀態</div><div>未連接</div>
+        <div class="k">Baud</div><div>--</div>
+        <div class="k">Port</div><div>--</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Raw 指令送出</h2>
+      <div class="hint">進階用途：直接輸入 8 個 hex bytes（ID + CMD + 6 data bytes），checksum 同 header(FA AF)/帧尾(ED) 會自動補上。</div>
+      <div class="row"><label>ID</label><input type="number" id="raw_id" min="0" max="240" value="1"></div>
+      <div class="row"><label>CMD</label><input type="text" id="raw_cmd" value="01" style="font-family:var(--mono);"></div>
+      <div class="row"><label>Data (6 bytes)</label><input type="text" id="raw_data" value="00 00 00 00 00 00" style="font-family:var(--mono);"></div>
+      <div class="row"><label>預期回覆長度</label><input type="number" id="raw_rxlen" value="1" min="1" max="10"></div>
+      <div class="section-actions">
+        <button id="btnSendRaw" class="danger">送出 Raw 指令</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>協議說明</h2>
+      <div class="hint" style="font-size:12px;line-height:1.7;">
+        1. 需支援 <b>Web Serial API</b>（Chrome / Edge 桌面版）。<br>
+        2. USB-TTL half-duplex adapter 連接 servo bus，固定 <b>115200bps, 8N1</b>。<br>
+        3. 主機指令格式：<code>FA AF {ID} {CMD} D1 D2 D3 D4 {SUM} ED</code><br>
+        4. Checksum = byte[2..7]（ID+CMD+D1..D4）相加後取低8位。<br>
+        5. CMD 一覽：<br>
+           &nbsp;&nbsp;<code>0x01</code> 設置角度（D1=角度0-240, D2=運動時間, D3D4=鎖定時間；angle=0xFF 為強制中止）<br>
+           &nbsp;&nbsp;<code>0x02</code> 角度回讀（讀取後舵機失電）<br>
+           &nbsp;&nbsp;<code>0xCD</code> 修改ID（D2=新ID）<br>
+           &nbsp;&nbsp;<code>0xD2</code> 設置角度偏移量（D3D4=有符號16位，單位1/3度）<br>
+           &nbsp;&nbsp;<code>0xD4</code> 讀取角度偏移量<br>
+        6. 讀取版本使用獨立 header <code>FC CF {ID} 01 00 00 00 00 {SUM} ED</code>。<br>
+        7. 單byte回覆：成功=<code>0xAA+ID</code>，失敗=無回應（修改ID失敗回覆<code>0xEE</code>）。<br>
+        8. 此協議源自「某宝白菜价白牌总线舵机研究记」項目（拆解 mega8 韌體反組譯得出），與 UBTECH 優必選機器人關節舵機同源。
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>協議依據 <a href="https://gitee.com/alicedodo/xaobao_cheap_bus_servo_hack_record" target="_blank">某宝白菜价白牌总线舵机研究记</a> 項目內 doc/UBTECH_protocol_detail.pdf 逐字核對實作。使用時請注意舵機獨立供電（勿只用USB供電），通信板電源與舵機電源需共地。</footer>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ===================== Protocol constants (verified against UBTECH_protocol_detail.pdf) ===================== */
+const HDR_CMD = [0xFA, 0xAF];   // general command header
+const HDR_VER = [0xFC, 0xCF];   // get version / upgrade firmware header
+const FOOTER = 0xED;
+
+const CMD = {
+  MOVE: 0x01,          // 设置角度
+  GETPOS: 0x02,         // 角度回读
+  SET_ID: 0xCD,          // 修改舵机ID
+  SET_OFFSET: 0xD2,      // 设置角度偏移量
+  GET_OFFSET: 0xD4,      // 读取角度偏移量设置
+  GET_VERSION: 0x01,     // (under FC CF header) 读取固件版本号
+};
+
+let port = null, reader = null, writer = null, keepReading = false;
+let readBuffer = [];
+let pendingResolve = null;
+let liveTimer = null;
+
+const $ = (id) => document.getElementById(id);
+const logEl = $('log');
+
+function log(kind, msg){
+  const line = document.createElement('div');
+  line.className = kind;
+  const t = new Date().toLocaleTimeString('en-GB', {hour12:false});
+  line.textContent = `[${t}] ${msg}`;
+  logEl.appendChild(line);
+  logEl.scrollTop = logEl.scrollHeight;
+}
+function toast(msg, isErr=false){
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isErr?' err':'');
+  setTimeout(()=>t.className='toast', 2200);
+}
+function bytesToHex(arr){ return Array.from(arr).map(b=>b.toString(16).padStart(2,'0').toUpperCase()).join(' '); }
+
+/* ===================== Serial connection ===================== */
+async function connect(){
+  if (!('serial' in navigator)) {
+    toast('此瀏覽器唔支援 Web Serial API，請用桌面版 Chrome 或 Edge', true);
+    return;
+  }
+  try{
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200, dataBits:8, stopBits:1, parity:'none' });
+    writer = port.writable.getWriter();
+    keepReading = true;
+    readLoop();
+    setConnected(true);
+    log('info', '已連接，baudrate=115200 8N1');
+    toast('連接成功');
+  }catch(e){
+    log('err', '連接失敗: ' + e.message);
+    toast('連接失敗: ' + e.message, true);
+  }
+}
+
+async function disconnect(){
+  keepReading = false;
+  try{
+    if (reader){ await reader.cancel().catch(()=>{}); reader.releaseLock(); reader=null; }
+    if (writer){ writer.releaseLock(); writer=null; }
+    if (port){ await port.close(); port=null; }
+  }catch(e){ log('err','切斷時發生錯誤: '+e.message); }
+  setConnected(false);
+  stopLive();
+  log('info','已切斷連接');
+}
+
+function setConnected(on){
+  const pill = $('connPill');
+  pill.textContent = on ? '已連接' : '未連接';
+  pill.className = 'pill ' + (on ? 'on':'off');
+  $('btnConnect').disabled = on;
+  $('btnDisconnect').disabled = !on;
+  $('connInfo').innerHTML = on
+    ? `<div class="k">狀態</div><div>已連接</div><div class="k">Baud</div><div>115200</div><div class="k">Port</div><div>已授權裝置</div>`
+    : `<div class="k">狀態</div><div>未連接</div><div class="k">Baud</div><div>--</div><div class="k">Port</div><div>--</div>`;
+}
+
+async function readLoop(){
+  while (port && port.readable && keepReading){
+    reader = port.readable.getReader();
+    try{
+      while (true){
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value){
+          for (const b of value) readBuffer.push(b);
+          if (pendingResolve) maybeResolvePending();
+        }
+      }
+    }catch(e){
+      if (keepReading) log('err','讀取錯誤: '+e.message);
+    }finally{
+      reader.releaseLock();
+    }
+  }
+}
+
+let pendingLen = 0;
+function maybeResolvePending(){
+  if (readBuffer.length >= pendingLen){
+    const data = readBuffer.splice(0, pendingLen);
+    const r = pendingResolve;
+    pendingResolve = null;
+    r(data);
+  }
+}
+
+function waitForBytes(n, timeoutMs=300){
+  return new Promise((resolve)=>{
+    pendingLen = n;
+    pendingResolve = resolve;
+    if (readBuffer.length >= n) maybeResolvePending();
+    setTimeout(()=>{
+      if (pendingResolve === resolve){
+        pendingResolve = null;
+        resolve(readBuffer.splice(0, readBuffer.length)); // return whatever partial data we have
+      }
+    }, timeoutMs);
+  });
+}
+
+async function sendRaw(bytes){
+  if (!writer) throw new Error('未連接');
+  const arr = new Uint8Array(bytes);
+  log('tx', 'TX: ' + bytesToHex(arr));
+  await writer.write(arr);
+}
+
+/* Build standard 10-byte frame */
+function buildFrame(header, id, cmd, d=[0,0,0,0,0,0]){
+  const buf = [header[0], header[1], id & 0xff, cmd & 0xff, d[0]&0xff, d[1]&0xff, d[2]&0xff, d[3]&0xff];
+  // per protocol doc: checksum = sum(Byte2..Byte7) low byte = sum(id,cmd,d1..d4)
+  // NOTE: header only carries 4 data bytes total in the 10-byte frame (Byte4-7); we only use first 4 of d[]
+  let sum = 0;
+  for (let i=2;i<8;i++) sum += buf[i];
+  buf.push(sum & 0xff);
+  buf.push(FOOTER);
+  return buf;
+}
+
+async function sendFrameAndWaitLen(header, cmdId, cmd, d, expectLen, timeoutMs=300){
+  readBuffer = [];
+  const frame = buildFrame(header, cmdId, cmd, d);
+  await sendRaw(frame);
+  const resp = await waitForBytes(expectLen, timeoutMs);
+  if (resp.length) log('rx', 'RX: ' + bytesToHex(resp));
+  else log('info', 'RX: (無回應)');
+  return resp;
+}
+
+/* ===================== Command wrappers (matches UBTECH_protocol_detail.pdf) ===================== */
+
+// 读取固件版本号: FC CF id 01 00 00 00 00 sum ED -> FC CF id V1 V2 V3 V4 sum ED (10 bytes)
+async function cmdGetVersion(id){
+  return await sendFrameAndWaitLen(HDR_VER, id, CMD.GET_VERSION, [0,0,0,0], 10, 300);
+}
+
+// 设置角度 (Move): FA AF id 01 angle time lockH lockL sum ED
+// success -> 1 byte: 0xAA+id ; failure -> no response
+async function cmdMove(id, angle, time, lockTime){
+  const lockH = (lockTime >> 8) & 0xff;
+  const lockL = lockTime & 0xff;
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.MOVE, [angle&0xff, time&0xff, lockH, lockL], 1, 400);
+}
+
+// 强制中止: FA AF id 01 FF 00 00 00 sum ED -> response 0xAA+id
+async function cmdAbort(id){
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.MOVE, [0xFF, 0x00, 0x00, 0x00], 1, 400);
+}
+
+// 角度回读: FA AF id 02 00 00 00 00 sum ED
+// response: FA AF id status(00) targetH targetL actualH actualL sum ED  (10 bytes)
+// per doc, byte7 (index7, 0-based) holds the readback used in the demo code as current angle
+async function cmdGetPos(id){
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.GETPOS, [0,0,0,0], 10, 400);
+}
+
+// 修改ID: FA AF id CD 00 newID 00 00 sum ED
+// response: FA AF oldID 00 00 00 00 sum ED (success, byte2 now shows NEW id per doc note) ; failure -> 0xEE
+async function cmdSetId(id, newId){
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.SET_ID, [0x00, newId&0xff, 0x00, 0x00], 10, 400);
+}
+
+// 设置角度偏移量: FA AF id D2 00 00 offH offL sum ED (offset is signed 16-bit, unit = 1/3 degree)
+async function cmdSetOffset(id, offsetRaw){
+  const offH = (offsetRaw >> 8) & 0xff;
+  const offL = offsetRaw & 0xff;
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.SET_OFFSET, [0x00, 0x00, offH, offL], 10, 400);
+}
+
+// 读取角度偏移量设置: FA AF id D4 00 00 00 00 sum ED
+// response 10 bytes: [0]FA [1]AF [2]id [3]XX [4]XX [5]XX [6]offsetH [7]offsetL [8]sum [9]ED
+async function cmdGetOffset(id){
+  return await sendFrameAndWaitLen(HDR_CMD, id, CMD.GET_OFFSET, [0,0,0,0], 10, 400);
+}
+
+/* ===================== UI wiring ===================== */
+function getTargetId(){ return parseInt($('targetId').value) || 0; }
+
+$('btnConnect').onclick = connect;
+$('btnDisconnect').onclick = disconnect;
+$('btnClearLog').onclick = ()=> logEl.innerHTML = '';
+
+/* -- Move control -- */
+const posSlider = $('posSlider'), posValue = $('posValue');
+posSlider.oninput = ()=> posValue.value = posSlider.value;
+posValue.onchange = ()=>{
+  let v = parseInt(posValue.value)||0;
+  v = Math.max(0, Math.min(240, v));
+  posValue.value = v; posSlider.value = v;
+};
+const timeSlider = $('timeSlider'), timeValue = $('timeValue');
+timeSlider.oninput = ()=> timeValue.value = timeSlider.value;
+timeValue.onchange = ()=>{
+  let v = parseInt(timeValue.value)||0;
+  v = Math.max(0, Math.min(255, v));
+  timeValue.value = v; timeSlider.value = v;
+};
+
+$('btnCenter').onclick = ()=>{ posSlider.value=120; posValue.value=120; sendMove(120); };
+$('btnSendMove').onclick = ()=> sendMove(parseInt(posValue.value));
+
+async function sendMove(angle){
+  try{
+    const id = getTargetId();
+    const time = parseInt(timeValue.value)||0;
+    const lockTime = parseInt($('lockTime').value)||0;
+    const resp = await cmdMove(id, angle, time, lockTime);
+    if (resp.length && resp[0] === ((0xAA + id) & 0xff)){
+      toast(`已送出角度 ${angle}°`);
+      $('liveTarget').innerHTML = `${angle}°<small>目標角度回讀</small>`;
+    } else if (resp.length){
+      toast('已送出，回應非預期格式，見記錄', true);
+    } else {
+      toast('無回應，指令可能失敗', true);
+    }
+  }catch(e){
+    log('err','送出角度指令失敗: '+e.message);
+    toast('送出失敗: '+e.message, true);
+  }
+}
+
+$('btnAbort').onclick = async ()=>{
+  try{
+    const id = getTargetId();
+    const resp = await cmdAbort(id);
+    if (resp.length && resp[0] === ((0xAA + id) & 0xff)){
+      toast('已強制中止並失電');
+    } else {
+      toast('中止指令無回應', true);
+    }
+  }catch(e){ log('err','中止失敗: '+e.message); toast('中止失敗',true); }
+};
+
+/* -- GetPos / live monitor -- */
+$('btnGetPos').onclick = async ()=>{
+  try{
+    const id = getTargetId();
+    const resp = await cmdGetPos(id);
+    if (resp.length >= 8){
+      const target = resp[5]; // Byte3(index5 in 0-based whole frame: header2+id+status+targetH) - see mapping below
+      const actual = resp[7];
+      $('liveTarget').innerHTML = `${target}°<small>目標角度回讀</small>`;
+      $('liveActual').innerHTML = `${actual}°<small>實際角度</small>`;
+      toast(`實際角度 = ${actual}°`);
+    } else {
+      toast('讀取角度失敗，回應長度不符', true);
+    }
+  }catch(e){ log('err','讀取角度失敗: '+e.message); toast('讀取角度失敗',true); }
+};
+
+$('btnLiveToggle').onclick = ()=>{
+  if (liveTimer){ stopLive(); }
+  else{
+    liveTimer = setInterval(async ()=>{
+      if (!port) return;
+      try{
+        const id = getTargetId();
+        const resp = await cmdGetPos(id);
+        if (resp.length >= 8){
+          $('liveTarget').innerHTML = `${resp[5]}°<small>目標角度回讀</small>`;
+          $('liveActual').innerHTML = `${resp[7]}°<small>實際角度</small>`;
+        }
+      }catch(e){ /* silent during polling */ }
+    }, 500);
+    $('btnLiveToggle').textContent = '停止輪詢監控';
+  }
+};
+function stopLive(){
+  if (liveTimer){ clearInterval(liveTimer); liveTimer=null; $('btnLiveToggle').textContent='開始輪詢監控'; }
+}
+
+/* -- Offset -- */
+function degToRaw(deg){
+  // unit = 1/3 degree, range -90..90 (raw) maps to -30..+30 degrees
+  let raw = Math.round(deg * 3);
+  raw = Math.max(-90, Math.min(90, raw));
+  // convert to two's complement 16-bit
+  if (raw < 0) raw = 65536 + raw;
+  return raw & 0xffff;
+}
+function rawToDeg(raw){
+  let v = raw;
+  if (v > 32767) v -= 65536;
+  return v / 3;
+}
+
+$('btnGetOffset').onclick = async ()=>{
+  try{
+    const id = getTargetId();
+    const resp = await cmdGetOffset(id);
+    if (resp.length >= 8){
+      const raw = (resp[6]<<8) | resp[7];
+      const deg = rawToDeg(raw);
+      $('p_offsetDeg').value = deg.toFixed(1);
+      toast(`偏移量 = ${deg.toFixed(1)}°`);
+    } else {
+      toast('讀取偏移量失敗，回應過短', true);
+    }
+  }catch(e){ log('err','讀取偏移量失敗: '+e.message); toast('讀取偏移量失敗',true); }
+};
+$('btnSetOffset').onclick = async ()=>{
+  try{
+    const id = getTargetId();
+    const deg = parseFloat($('p_offsetDeg').value)||0;
+    if (deg < -30 || deg > 30) throw new Error('偏移量範圍為 -30° 至 +30°');
+    const raw = degToRaw(deg);
+    const resp = await cmdSetOffset(id, raw);
+    toast('偏移量已寫入（注意：重新上電後會清零）');
+    log('info', `偏移量寫入完成: ${deg}°`);
+  }catch(e){ log('err','寫入偏移量失敗: '+e.message); toast(e.message,true); }
+};
+
+/* -- Set ID -- */
+$('btnWriteId').onclick = async ()=>{
+  if (!confirm('ID 修改會立即生效，且盡量避免用廣播模式（總線上須只有一個servo），確定繼續？')) return;
+  try{
+    const id = getTargetId();
+    const newId = parseInt($('p_newid').value);
+    const resp = await cmdSetId(id, newId);
+    if (resp.length && resp[0] === 0xEE){
+      toast('修改 ID 失敗（收到 0xEE）', true);
+    } else if (resp.length){
+      toast(`ID 已修改為 ${newId}`);
+      $('targetId').value = newId;
+      $('raw_id').value = newId;
+    } else {
+      toast('無回應，修改可能失敗', true);
+    }
+  }catch(e){ log('err','修改 ID 失敗: '+e.message); toast('修改 ID 失敗',true); }
+};
+
+/* -- Version / Ping -- */
+$('btnGetVersion').onclick = async ()=>{
+  try{
+    const id = getTargetId();
+    const resp = await cmdGetVersion(id);
+    if (resp.length >= 4 && resp[2] === id){
+      toast(`Servo ID ${id} 在線，版本: ${resp[3]}.${resp[4]}.${resp[5]}.${resp[6]}`);
+    } else if (resp.length){
+      toast('收到回應但格式非預期，見記錄');
+    } else {
+      toast('無回應', true);
+    }
+  }catch(e){ log('err','讀取版本失敗: '+e.message); toast('讀取版本失敗',true); }
+};
+
+/* -- Scan -- */
+$('btnScan').onclick = async ()=>{
+  if (!port){ toast('請先連接', true); return; }
+  const min = parseInt($('scanMin').value)||1;
+  const max = parseInt($('scanMax').value)||16;
+  const listEl = $('servoList');
+  listEl.innerHTML = '<div class="hint">掃描中…</div>';
+  const found = [];
+  for (let id=min; id<=max; id++){
+    try{
+      const resp = await cmdGetVersion(id);
+      if (resp.length >= 4 && resp[2] === id){
+        found.push({id, ver: `${resp[3]}.${resp[4]}.${resp[5]}.${resp[6]}`});
+      }
+    }catch(e){ /* ignore */ }
+  }
+  if (found.length===0){
+    listEl.innerHTML = '<div class="hint">未搵到任何 servo 回應。請確認接線、供電，同 ID 範圍。</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  found.forEach(({id,ver})=>{
+    const item = document.createElement('div');
+    item.className = 'servo-item';
+    item.innerHTML = `<span class="id">ID ${id}</span><span class="badge">v${ver}</span>`;
+    item.onclick = ()=>{
+      document.querySelectorAll('.servo-item').forEach(x=>x.classList.remove('active'));
+      item.classList.add('active');
+      $('targetId').value = id;
+      $('raw_id').value = id;
+      toast(`已選擇 ID ${id}`);
+    };
+    listEl.appendChild(item);
+  });
+  toast(`掃描完成，搵到 ${found.length} 個 servo`);
+};
+
+/* -- Raw command -- */
+$('btnSendRaw').onclick = async ()=>{
+  try{
+    const id = parseInt($('raw_id').value)||0;
+    const cmd = parseInt($('raw_cmd').value, 16) || 0;
+    const dataParts = $('raw_data').value.trim().split(/\s+/).map(h=>parseInt(h,16)||0);
+    while (dataParts.length < 4) dataParts.push(0);
+    const rxLen = parseInt($('raw_rxlen').value)||1;
+    const resp = await sendFrameAndWaitLen(HDR_CMD, id, cmd, dataParts.slice(0,4), rxLen, 600);
+    toast(resp.length ? '已收到回應，見記錄' : '無回應');
+  }catch(e){ log('err','Raw 指令送出失敗: '+e.message); toast('送出失敗',true); }
+};
+</script>
+</body>
+</html>
